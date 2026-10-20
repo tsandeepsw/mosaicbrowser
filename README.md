@@ -118,4 +118,4 @@ npm start
 
 ## License
 
-ISC
+MIT
