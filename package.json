@@ -83,7 +83,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "@electron/rebuild": "^3.7.2",
     "@eslint/js": "^10.0.1",
