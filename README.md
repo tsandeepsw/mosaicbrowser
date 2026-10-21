@@ -14,7 +14,6 @@ A high-performance, multi-panel desktop browser built with **Electron**, **React
   - `contextIsolation` enabled with Node.js strictly forbidden from web contexts.
   - Granular IPC validation for view bounds, navigation events, and external URLs.
   - Defensive window open and external protocol handlers.
-- **Command Palette & Shortcuts**: Quick keyboard-driven workspace switching and layout changes.
 
 ---
 
