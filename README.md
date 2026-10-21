@@ -1,4 +1,4 @@
-# Workspace Browser
+# Mosaic Browser
 
 A high-performance, multi-panel desktop browser built with **Electron**, **React**, and **TypeScript**. Workspace Browser enables users to organize web applications into persistent, customizable workspaces with side-by-side multi-view layouts and isolated session contexts.
 
