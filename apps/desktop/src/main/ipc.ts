@@ -4,6 +4,7 @@ import { NotificationManager } from './managers/NotificationManager';
 import { PermissionManager } from './managers/PermissionManager';
 import { DownloadManager } from './managers/DownloadManager';
 import { ShellManager } from './managers/ShellManager';
+import { BookmarkDropdownManager } from './managers/BookmarkDropdownManager';
 import { z } from 'zod';
 
 const BoundsSchema = z.object({
@@ -93,6 +94,22 @@ export function setupIPC(mainWindow: BrowserWindow) {
     }
   });
 
+  ipcMain.handle('view:setVisible', (event, id: string, visible: boolean) => {
+    z.string().parse(id);
+    z.boolean().parse(visible);
+    const viewManager = views.get(id);
+    if (viewManager) {
+      viewManager.setVisible(visible);
+    }
+  });
+
+  ipcMain.handle('view:setVisibleAll', (event, visible: boolean) => {
+    z.boolean().parse(visible);
+    views.forEach((viewManager) => {
+      viewManager.setVisible(visible);
+    });
+  });
+
   ipcMain.handle('view:navigate', async (event, id: string, url: string) => {
     z.string().parse(id);
     z.string().parse(url);
@@ -156,6 +173,7 @@ export function setupIPC(mainWindow: BrowserWindow) {
   const dbPath = path.join(app.getPath('userData'), 'workspace.db');
   const storage = new SQLiteStorageProvider(dbPath);
   storage.initialize();
+  BookmarkDropdownManager.setup(mainWindow, storage);
 
   ipcMain.handle('storage:getAllWorkspaces', () => {
     return storage.getAllWorkspaces().data || [];

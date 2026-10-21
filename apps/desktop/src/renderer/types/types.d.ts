@@ -22,6 +22,8 @@ declare global {
         focus: (id: string) => Promise<void>;
         setMuted: (id: string, isMuted: boolean) => Promise<void>;
         background: (id: string) => Promise<void>;
+        setVisible?: (id: string, visible: boolean) => Promise<void>;
+        setVisibleAll?: (visible: boolean) => Promise<void>;
         onStateChanged: (callback: (state: any) => void) => void;
       };
       shell: {
@@ -34,6 +36,12 @@ declare global {
         getBookmarks: () => Promise<Array<{ id: string; url: string; title: string }>>;
         saveBookmark: (id: string, url: string, title: string) => Promise<void>;
         deleteBookmark: (id: string) => Promise<void>;
+      };
+      bookmarks?: {
+        showDropdown: (data: { x: number; y: number; width: number; bookmarks: any[] }) => Promise<void>;
+        closeDropdown: () => Promise<void>;
+        onDropdownClosed: (callback: () => void) => void;
+        onUpdated: (callback: () => void) => void;
       };
       permission: {
         grant: (origin: string, permission: string) => Promise<void>;

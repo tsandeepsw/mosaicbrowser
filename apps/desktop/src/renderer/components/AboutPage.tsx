@@ -29,12 +29,12 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack, onNavigatePrivacy 
           </div>
           <h1 className="info-hero-title">Mosaic</h1>
           <p className="info-hero-subtitle">
-            A next-generation multi-panel workspace browser built for speed, privacy, and customizable split-view workflows.
+            A multi-panel workspace browser built for productivity, organization and focused web browsing.
           </p>
           <div className="info-hero-badges">
             <span className="badge badge-primary">Version 0.1.0</span>
             <span className="badge badge-accent">Electron & React</span>
-            <span className="badge badge-neutral">100% Local & Private</span>
+            <span className="badge badge-neutral">Privacy Focused</span>
           </div>
         </div>
 
@@ -77,15 +77,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack, onNavigatePrivacy 
             <div className="feature-icon" style={{ background: 'rgba(236, 72, 153, 0.15)', color: '#f472b6' }}>🔇</div>
             <h3>Per-Panel Audio & Throttling</h3>
             <p>
-              Quickly mute noisy tabs with a click. Background sleeping automatically throttles inactive views after 60 seconds to conserve battery and CPU resources.
-            </p>
-          </div>
-
-          <div className="feature-card">
-            <div className="feature-icon" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>⌨️</div>
-            <h3>Command Palette</h3>
-            <p>
-              Press <kbd>Cmd</kbd> + <kbd>K</kbd> (or <kbd>Ctrl</kbd> + <kbd>K</kbd>) to search across all workspaces, switch tabs, reload panels, and navigate without taking your hands off the keyboard.
+              Quickly mute noisy tabs with a click. Background views may be throttled to improve performance and reduce resource usage.
             </p>
           </div>
         </div>
@@ -99,7 +91,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack, onNavigatePrivacy 
           </div>
           <div className="tech-item">
             <span className="tech-label">Local Storage</span>
-            <span className="tech-value">Embedded SQLite with WAL Mode</span>
+            <span className="tech-value">App data is stored locally on the user's device</span>
           </div>
           <div className="tech-item">
             <span className="tech-label">Process Security</span>

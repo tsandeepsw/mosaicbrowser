@@ -28,12 +28,11 @@ export const PrivacyPolicyPage: React.FC<PrivacyPolicyPageProps> = ({ onBack, on
           </div>
           <h1 className="info-hero-title">Privacy Policy</h1>
           <p className="info-hero-subtitle">
-            Mosaic is built around one uncompromising principle: your browsing activity belongs solely to you.
-            We do not track, collect, or transmit your personal data.
+            Mosaic is designed to minimize data collection. Mosaic does not intentionally collect personal information or browsing activity, and most application data remains stored locally on your device.
           </p>
           <div className="info-hero-badges">
-            <span className="badge badge-success">Zero Telemetry</span>
-            <span className="badge badge-primary">100% On-Device Storage</span>
+            <span className="badge badge-success">No Analytics Tracking</span>
+            <span className="badge badge-primary">Application Data Stored Locally</span>
             <span className="badge badge-accent">Isolated Profiles</span>
             <span className="badge badge-neutral">Last Updated: October 2026</span>
           </div>
@@ -44,7 +43,7 @@ export const PrivacyPolicyPage: React.FC<PrivacyPolicyPageProps> = ({ onBack, on
         <div className="info-features-grid">
           <div className="feature-card">
             <div className="feature-icon" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>🚫</div>
-            <h3>Zero Cloud Telemetry</h3>
+            <h3>No Analytics Tracking</h3>
             <p>
               Mosaic has no analytics, tracking beacons, or telemetry servers. We do not log what websites you visit, what searches you perform, or how you configure your browser.
             </p>
@@ -73,6 +72,44 @@ export const PrivacyPolicyPage: React.FC<PrivacyPolicyPageProps> = ({ onBack, on
               All websites run inside sandboxed Chromium renderer processes with strict context isolation. Web content cannot access your OS files, shell commands, or native Node.js APIs.
             </p>
           </div>
+          <div className="feature-card">
+            <div
+              className="feature-icon"
+              style={{
+                background: 'rgba(245, 158, 11, 0.15)',
+                color: '#fbbf24'
+              }}
+            >
+              🔍
+            </div>
+
+            <h3>Open Source</h3>
+
+            <p>
+              Mosaic is an open-source project. The source code is publicly available for review,
+              allowing anyone to inspect how the application works and verify its privacy and
+              security practices.
+            </p>
+          </div>
+          <div className="feature-card">
+            <div
+              className="feature-icon"
+              style={{
+                background: 'rgba(99, 102, 241, 0.15)',
+                color: '#818cf8'
+              }}
+            >
+              🔎
+            </div>
+
+            <h3>Third-Party Search Providers</h3>
+
+            <p>
+              Searches performed through integrated search providers are processed according to
+              the privacy policies and terms of those providers. Mosaic does not control how
+              external websites handle user data.
+            </p>
+          </div>
         </div>
 
         {/* Policy Details */}
@@ -91,7 +128,7 @@ export const PrivacyPolicyPage: React.FC<PrivacyPolicyPageProps> = ({ onBack, on
               Data created within Mosaic is saved into your operating system's standard application data directory:
             </p>
             <ul style={{ paddingLeft: '20px', margin: '8px 0', color: 'var(--text-primary)', fontSize: '0.95em' }}>
-              <li><strong>Workspaces & Panels:</strong> Persisted in <code>workspaces.db</code> via SQLite.</li>
+              <li><strong>Workspaces & Panels:</strong> Workspace data is stored locally on your device.</li>
               <li><strong>Bookmarks:</strong> Stored locally in the <code>bookmarks</code> table.</li>
               <li><strong>Downloads:</strong> Saved directly to your OS Downloads folder. Paths are sanitized to prevent directory traversal.</li>
             </ul>

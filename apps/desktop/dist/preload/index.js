@@ -14,6 +14,8 @@ import_electron.contextBridge.exposeInMainWorld("electronAPI", {
     reload: (id) => import_electron.ipcRenderer.invoke("view:reload", id),
     focus: (id) => import_electron.ipcRenderer.invoke("view:focus", id),
     setMuted: (id, isMuted) => import_electron.ipcRenderer.invoke("view:setMuted", id, isMuted),
+    setVisible: (id, visible) => import_electron.ipcRenderer.invoke("view:setVisible", id, visible),
+    setVisibleAll: (visible) => import_electron.ipcRenderer.invoke("view:setVisibleAll", visible),
     onStateChanged: (callback) => {
       import_electron.ipcRenderer.on("view:state-changed", (_event, state) => callback(state));
     }
@@ -28,6 +30,16 @@ import_electron.contextBridge.exposeInMainWorld("electronAPI", {
     getBookmarks: () => import_electron.ipcRenderer.invoke("storage:getBookmarks"),
     saveBookmark: (id, url, title) => import_electron.ipcRenderer.invoke("storage:saveBookmark", id, url, title),
     deleteBookmark: (id) => import_electron.ipcRenderer.invoke("storage:deleteBookmark", id)
+  },
+  bookmarks: {
+    showDropdown: (data) => import_electron.ipcRenderer.invoke("bookmarks:showDropdown", data),
+    closeDropdown: () => import_electron.ipcRenderer.invoke("bookmarks:closeDropdown"),
+    onDropdownClosed: (callback) => {
+      import_electron.ipcRenderer.on("bookmarks:dropdown-closed", () => callback());
+    },
+    onUpdated: (callback) => {
+      import_electron.ipcRenderer.on("bookmarks:updated", () => callback());
+    }
   },
   permission: {
     grant: (origin, permission) => import_electron.ipcRenderer.invoke("permission:grant", origin, permission),

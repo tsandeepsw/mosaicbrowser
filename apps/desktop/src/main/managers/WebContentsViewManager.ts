@@ -484,6 +484,16 @@ export class WebContentsViewManager {
     }
   }
 
+  public setVisible(visible: boolean) {
+    if (this.view && !this.isBackground) {
+      try {
+        this.view.setVisible(visible);
+      } catch (e) {
+        console.error(`Error setting view visibility for ${this.id}:`, e);
+      }
+    }
+  }
+
   public destroy(parentWindow: BaseWindow) {
     if (this.sleepTimer) {
       clearTimeout(this.sleepTimer);

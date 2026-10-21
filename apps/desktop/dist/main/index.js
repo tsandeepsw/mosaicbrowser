@@ -20672,7 +20672,7 @@ var init_dist = __esm({
 });
 
 // src/main/index.ts
-var import_electron8 = require("electron");
+var import_electron9 = require("electron");
 var path3 = __toESM(require("path"));
 
 // src/main/security.ts
@@ -20708,7 +20708,7 @@ function applySecurityControls(appInstance, window) {
 }
 
 // src/main/ipc.ts
-var import_electron7 = require("electron");
+var import_electron8 = require("electron");
 
 // src/main/managers/WebContentsViewManager.ts
 var import_electron4 = require("electron");
@@ -21341,6 +21341,15 @@ var WebContentsViewManager = class {
       this.view.webContents.focus();
     }
   }
+  setVisible(visible) {
+    if (this.view && !this.isBackground) {
+      try {
+        this.view.setVisible(visible);
+      } catch (e) {
+        console.error(`Error setting view visibility for ${this.id}:`, e);
+      }
+    }
+  }
   destroy(parentWindow) {
     if (this.sleepTimer) {
       clearTimeout(this.sleepTimer);
@@ -21455,6 +21464,245 @@ var ShellManager = class {
   }
 };
 
+// src/main/managers/BookmarkDropdownManager.ts
+var import_electron7 = require("electron");
+var BookmarkDropdownManager = class {
+  static popup = null;
+  static mainWindow = null;
+  static setup(mainWindow2, storage) {
+    this.mainWindow = mainWindow2;
+    import_electron7.ipcMain.handle("bookmarks:showDropdown", async (_event, data) => {
+      this.show(data, storage);
+    });
+    import_electron7.ipcMain.handle("bookmarks:closeDropdown", () => {
+      this.close();
+    });
+    import_electron7.ipcMain.on("bookmarks:select", (_event, url2) => {
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.mainWindow.webContents.send("app:open-url-in-new-panel", url2);
+        this.mainWindow.webContents.send("bookmarks:dropdown-closed");
+      }
+      this.close();
+    });
+    import_electron7.ipcMain.on("bookmarks:delete", async (_event, id) => {
+      if (storage) {
+        await storage.deleteBookmark(id);
+      }
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.mainWindow.webContents.send("bookmarks:updated");
+      }
+    });
+    import_electron7.ipcMain.on("bookmarks:close", () => {
+      this.close();
+    });
+    mainWindow2.on("move", () => this.close());
+    mainWindow2.on("resize", () => this.close());
+  }
+  static close() {
+    if (this.popup && !this.popup.isDestroyed()) {
+      this.popup.destroy();
+      this.popup = null;
+    }
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.webContents.send("bookmarks:dropdown-closed");
+    }
+  }
+  static show(data, _storage) {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) return;
+    const width = data.width || 280;
+    const itemHeight = 32;
+    const totalContentHeight = Math.min(380, Math.max(60, data.bookmarks.length * itemHeight + 16));
+    const contentBounds = this.mainWindow.getContentBounds();
+    const popupX = Math.min(
+      contentBounds.x + contentBounds.width - width - 8,
+      Math.max(contentBounds.x + 8, contentBounds.x + data.x)
+    );
+    const popupY = contentBounds.y + data.y;
+    if (!this.popup || this.popup.isDestroyed()) {
+      this.popup = new import_electron7.BrowserWindow({
+        parent: this.mainWindow,
+        width,
+        height: totalContentHeight,
+        x: popupX,
+        y: popupY,
+        frame: false,
+        transparent: true,
+        resizable: false,
+        alwaysOnTop: true,
+        skipTaskbar: true,
+        hasShadow: false,
+        show: false,
+        webPreferences: {
+          partition: "dropdown-overlay",
+          nodeIntegration: true,
+          contextIsolation: false
+        }
+      });
+      this.popup.on("blur", () => {
+        this.close();
+      });
+    } else {
+      this.popup.setBounds({
+        x: popupX,
+        y: popupY,
+        width,
+        height: totalContentHeight
+      });
+    }
+    const bookmarksJson = JSON.stringify(data.bookmarks);
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          :root {
+            --bg-secondary: #252526;
+            --bg-hover: #37373d;
+            --border-color: #3e3e42;
+            --border-focus: #007fd4;
+            --text-primary: #cccccc;
+            --text-active: #ffffff;
+            --danger: #f14c4c;
+          }
+          * { box-sizing: border-box; }
+          body {
+            margin: 0;
+            padding: 4px;
+            background: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
+            overflow: hidden;
+          }
+          .bookmarks-overflow-dropdown {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            max-height: ${totalContentHeight - 8}px;
+            overflow-y: auto;
+          }
+          .bookmarks-overflow-dropdown::-webkit-scrollbar {
+            width: 6px;
+          }
+          .bookmarks-overflow-dropdown::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 3px;
+          }
+          .bookmarks-overflow-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--text-primary);
+            transition: background 0.1s;
+            white-space: nowrap;
+            overflow: hidden;
+          }
+          .bookmarks-overflow-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-active);
+          }
+          .bookmark-icon {
+            color: #f5a623;
+            font-size: 12px;
+            flex-shrink: 0;
+          }
+          .bookmarks-overflow-item-title {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          .bookmark-delete {
+            margin-left: 2px;
+            color: #888;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            line-height: 1;
+            transition: all 0.1s;
+            flex-shrink: 0;
+          }
+          .bookmark-delete:hover {
+            background-color: rgba(241, 76, 76, 0.2);
+            color: var(--danger);
+          }
+        </style>
+      </head>
+      <body>
+        <div class="bookmarks-overflow-dropdown" id="dropdown"></div>
+        <script>
+          const { ipcRenderer } = require('electron');
+          const bookmarks = ${bookmarksJson};
+          const dropdown = document.getElementById('dropdown');
+
+          function render() {
+            dropdown.innerHTML = '';
+            bookmarks.forEach(b => {
+              const item = document.createElement('div');
+              item.className = 'bookmarks-overflow-item';
+              item.title = b.url;
+              item.innerHTML = \`
+                <span class="bookmark-icon">\u2605</span>
+                <span class="bookmarks-overflow-item-title">\${escapeHtml(b.title)}</span>
+                <span class="bookmark-delete" title="Remove Bookmark">\u2715</span>
+              \`;
+              item.onclick = (e) => {
+                if (e.target.classList.contains('bookmark-delete')) {
+                  e.stopPropagation();
+                  ipcRenderer.send('bookmarks:delete', b.id);
+                  const idx = bookmarks.findIndex(x => x.id === b.id);
+                  if (idx !== -1) bookmarks.splice(idx, 1);
+                  if (bookmarks.length === 0) {
+                    ipcRenderer.send('bookmarks:close');
+                  } else {
+                    render();
+                  }
+                } else {
+                  ipcRenderer.send('bookmarks:select', b.url);
+                }
+              };
+              dropdown.appendChild(item);
+            });
+          }
+
+          function escapeHtml(str) {
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+          }
+
+          window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+              setTimeout(() => {
+                ipcRenderer.send('bookmarks:close');
+              }, 10);
+            }
+          });
+
+          render();
+        </script>
+      </body>
+      </html>
+    `;
+    this.popup.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`).then(() => {
+      this.popup?.show();
+    });
+  }
+};
+
 // src/main/ipc.ts
 init_zod();
 var BoundsSchema = external_exports.object({
@@ -21468,7 +21716,7 @@ var views = /* @__PURE__ */ new Map();
 function setupIPC(mainWindow2) {
   NotificationManager.setup(mainWindow2, views);
   DownloadManager.setup(mainWindow2);
-  import_electron7.ipcMain.handle("view:create", async (event, id, partitionId, url2, bounds) => {
+  import_electron8.ipcMain.handle("view:create", async (event, id, partitionId, url2, bounds) => {
     external_exports.string().parse(id);
     PartitionSchema.parse(partitionId);
     external_exports.string().parse(url2);
@@ -21501,7 +21749,7 @@ function setupIPC(mainWindow2) {
       await viewManager.navigate(url2).catch(console.error);
     }
   });
-  import_electron7.ipcMain.handle("view:destroy", (event, id) => {
+  import_electron8.ipcMain.handle("view:destroy", (event, id) => {
     external_exports.string().parse(id);
     const viewManager = views.get(id);
     if (viewManager) {
@@ -21509,14 +21757,14 @@ function setupIPC(mainWindow2) {
       views.delete(id);
     }
   });
-  import_electron7.ipcMain.handle("view:background", (event, id) => {
+  import_electron8.ipcMain.handle("view:background", (event, id) => {
     external_exports.string().parse(id);
     const viewManager = views.get(id);
     if (viewManager) {
       viewManager.setBackground(mainWindow2, true);
     }
   });
-  import_electron7.ipcMain.handle("view:setBounds", (event, id, bounds) => {
+  import_electron8.ipcMain.handle("view:setBounds", (event, id, bounds) => {
     external_exports.string().parse(id);
     BoundsSchema.parse(bounds);
     const viewManager = views.get(id);
@@ -21524,13 +21772,27 @@ function setupIPC(mainWindow2) {
       viewManager.setBounds(bounds);
     }
   });
-  import_electron7.ipcMain.on("view:setBoundsSync", (event, id, bounds) => {
+  import_electron8.ipcMain.on("view:setBoundsSync", (event, id, bounds) => {
     const viewManager = views.get(id);
     if (viewManager) {
       viewManager.setBounds(bounds);
     }
   });
-  import_electron7.ipcMain.handle("view:navigate", async (event, id, url2) => {
+  import_electron8.ipcMain.handle("view:setVisible", (event, id, visible) => {
+    external_exports.string().parse(id);
+    external_exports.boolean().parse(visible);
+    const viewManager = views.get(id);
+    if (viewManager) {
+      viewManager.setVisible(visible);
+    }
+  });
+  import_electron8.ipcMain.handle("view:setVisibleAll", (event, visible) => {
+    external_exports.boolean().parse(visible);
+    views.forEach((viewManager) => {
+      viewManager.setVisible(visible);
+    });
+  });
+  import_electron8.ipcMain.handle("view:navigate", async (event, id, url2) => {
     external_exports.string().parse(id);
     external_exports.string().parse(url2);
     const viewManager = views.get(id);
@@ -21538,35 +21800,35 @@ function setupIPC(mainWindow2) {
       await viewManager.navigate(url2).catch(console.error);
     }
   });
-  import_electron7.ipcMain.handle("view:goBack", (event, id) => {
+  import_electron8.ipcMain.handle("view:goBack", (event, id) => {
     external_exports.string().parse(id);
     const viewManager = views.get(id);
     if (viewManager) {
       viewManager.goBack();
     }
   });
-  import_electron7.ipcMain.handle("view:goForward", (event, id) => {
+  import_electron8.ipcMain.handle("view:goForward", (event, id) => {
     external_exports.string().parse(id);
     const viewManager = views.get(id);
     if (viewManager) {
       viewManager.goForward();
     }
   });
-  import_electron7.ipcMain.handle("view:reload", (event, id) => {
+  import_electron8.ipcMain.handle("view:reload", (event, id) => {
     external_exports.string().parse(id);
     const viewManager = views.get(id);
     if (viewManager) {
       viewManager.reload();
     }
   });
-  import_electron7.ipcMain.handle("view:focus", (event, id) => {
+  import_electron8.ipcMain.handle("view:focus", (event, id) => {
     external_exports.string().parse(id);
     const viewManager = views.get(id);
     if (viewManager) {
       viewManager.view?.webContents?.focus();
     }
   });
-  import_electron7.ipcMain.handle("view:setMuted", (event, id, isMuted) => {
+  import_electron8.ipcMain.handle("view:setMuted", (event, id, isMuted) => {
     external_exports.string().parse(id);
     external_exports.boolean().parse(isMuted);
     const viewManager = views.get(id);
@@ -21574,7 +21836,7 @@ function setupIPC(mainWindow2) {
       viewManager.view?.webContents?.setAudioMuted(isMuted);
     }
   });
-  import_electron7.ipcMain.handle("shell:openExternal", async (event, url2) => {
+  import_electron8.ipcMain.handle("shell:openExternal", async (event, url2) => {
     external_exports.string().parse(url2);
     await ShellManager.openExternal(url2);
   });
@@ -21584,35 +21846,36 @@ function setupIPC(mainWindow2) {
   const dbPath = path4.join(app4.getPath("userData"), "workspace.db");
   const storage = new SQLiteStorageProvider2(dbPath);
   storage.initialize();
-  import_electron7.ipcMain.handle("storage:getAllWorkspaces", () => {
+  BookmarkDropdownManager.setup(mainWindow2, storage);
+  import_electron8.ipcMain.handle("storage:getAllWorkspaces", () => {
     return storage.getAllWorkspaces().data || [];
   });
-  import_electron7.ipcMain.handle("storage:saveWorkspace", (event, workspace) => {
+  import_electron8.ipcMain.handle("storage:saveWorkspace", (event, workspace) => {
     storage.saveWorkspace(workspace);
   });
-  import_electron7.ipcMain.handle("storage:deleteWorkspace", (event, id) => {
+  import_electron8.ipcMain.handle("storage:deleteWorkspace", (event, id) => {
     external_exports.string().parse(id);
     storage.deleteWorkspace(id);
   });
-  import_electron7.ipcMain.handle("storage:getBookmarks", () => {
+  import_electron8.ipcMain.handle("storage:getBookmarks", () => {
     return storage.getBookmarks().data || [];
   });
-  import_electron7.ipcMain.handle("storage:saveBookmark", (event, id, url2, title) => {
+  import_electron8.ipcMain.handle("storage:saveBookmark", (event, id, url2, title) => {
     external_exports.string().parse(id);
     external_exports.string().parse(url2);
     external_exports.string().parse(title);
     return storage.saveBookmark(id, url2, title);
   });
-  import_electron7.ipcMain.handle("storage:deleteBookmark", (event, id) => {
+  import_electron8.ipcMain.handle("storage:deleteBookmark", (event, id) => {
     external_exports.string().parse(id);
     return storage.deleteBookmark(id);
   });
-  import_electron7.ipcMain.handle("permission:grant", (event, origin, permission) => {
+  import_electron8.ipcMain.handle("permission:grant", (event, origin, permission) => {
     external_exports.string().parse(origin);
     external_exports.string().parse(permission);
     PermissionManager.grant(origin, permission);
   });
-  import_electron7.ipcMain.handle("permission:deny", (event, origin, permission) => {
+  import_electron8.ipcMain.handle("permission:deny", (event, origin, permission) => {
     external_exports.string().parse(origin);
     external_exports.string().parse(permission);
     PermissionManager.deny(origin, permission);
@@ -21620,7 +21883,7 @@ function setupIPC(mainWindow2) {
 }
 
 // src/main/index.ts
-import_electron8.app.name = "Mosaic";
+import_electron9.app.name = "Mosaic";
 var isDev = process.env.NODE_ENV === "development";
 var mainWindow = null;
 function navigateTo(page) {
@@ -21708,12 +21971,12 @@ function setupApplicationMenu() {
       ]
     }
   ];
-  const menu = import_electron8.Menu.buildFromTemplate(template);
-  import_electron8.Menu.setApplicationMenu(menu);
+  const menu = import_electron9.Menu.buildFromTemplate(template);
+  import_electron9.Menu.setApplicationMenu(menu);
 }
 function createWindow() {
   const iconPath = path3.join(__dirname, "../icon.png");
-  mainWindow = new import_electron8.BrowserWindow({
+  mainWindow = new import_electron9.BrowserWindow({
     title: "Mosaic",
     icon: iconPath,
     width: 1200,
@@ -21726,13 +21989,13 @@ function createWindow() {
       preload: path3.join(__dirname, "../preload/index.js")
     }
   });
-  if (process.platform === "darwin" && import_electron8.app.dock) {
+  if (process.platform === "darwin" && import_electron9.app.dock) {
     try {
-      import_electron8.app.dock.setIcon(iconPath);
+      import_electron9.app.dock.setIcon(iconPath);
     } catch {
     }
   }
-  applySecurityControls(import_electron8.app, mainWindow);
+  applySecurityControls(import_electron9.app, mainWindow);
   setupIPC(mainWindow);
   setupApplicationMenu();
   if (isDev) {
@@ -21745,17 +22008,17 @@ function createWindow() {
     mainWindow = null;
   });
 }
-import_electron8.app.whenReady().then(() => {
+import_electron9.app.whenReady().then(() => {
   createWindow();
-  import_electron8.ipcMain.handle("ping", () => "pong");
-  import_electron8.app.on("activate", () => {
-    if (import_electron8.BrowserWindow.getAllWindows().length === 0) {
+  import_electron9.ipcMain.handle("ping", () => "pong");
+  import_electron9.app.on("activate", () => {
+    if (import_electron9.BrowserWindow.getAllWindows().length === 0) {
       createWindow();
     }
   });
 });
-import_electron8.app.on("window-all-closed", () => {
+import_electron9.app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
-    import_electron8.app.quit();
+    import_electron9.app.quit();
   }
 });

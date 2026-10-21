@@ -20,6 +20,9 @@ export const App = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [bookmarks, setBookmarks] = useState<Array<{ id: string; url: string; title: string }>>([]);
+  const [showBookmarkOverflow, setShowBookmarkOverflow] = useState(false);
+  const [bookmarksOverflowing, setBookmarksOverflowing] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null);
   const hasInitialized = useRef(false);
   const createWorkspaceRef = useRef<() => void>(() => { });
   const addSiteRef = useRef<(url?: string) => void>(() => { });
@@ -27,6 +30,11 @@ export const App = () => {
   workspacesRef.current = workspaces;
   const activeWorkspaceIdRef = useRef(activeWorkspaceId);
   activeWorkspaceIdRef.current = activeWorkspaceId;
+  const bookmarksBarRef = useRef<HTMLDivElement>(null);
+  const overflowDropdownRef = useRef<HTMLDivElement>(null);
+  const overflowBtnRef = useRef<HTMLButtonElement>(null);
+  const lastClosedTimeRef = useRef(0);
+  const hasNativeDropdown = typeof window !== 'undefined' && Boolean(window.electronAPI?.bookmarks?.showDropdown);
 
   useEffect(() => {
     if (hasInitialized.current) return;
@@ -85,6 +93,19 @@ export const App = () => {
       }
     });
 
+    window.electronAPI.bookmarks?.onUpdated?.(() => {
+      window.electronAPI.storage.getBookmarks?.().then((loadedBookmarks: any[]) => {
+        if (loadedBookmarks && Array.isArray(loadedBookmarks)) {
+          setBookmarks(loadedBookmarks);
+        }
+      });
+    });
+
+    window.electronAPI.bookmarks?.onDropdownClosed?.(() => {
+      lastClosedTimeRef.current = Date.now();
+      setShowBookmarkOverflow(false);
+    });
+
     window.electronAPI.view.onStateChanged((state) => {
       setViewStates((prev) => ({ ...prev, [state.id]: state }));
     });
@@ -140,6 +161,63 @@ export const App = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Detect bookmarks bar overflow to show/hide the chevron button
+  useEffect(() => {
+    const bar = bookmarksBarRef.current;
+    if (!bar) return;
+    let rafId: number;
+    const checkOverflow = () => {
+      // Defer to next frame so the browser has finished laying out chips
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        if (!bar.isConnected) return;
+        setBookmarksOverflowing(bar.scrollWidth > bar.clientWidth);
+      });
+    };
+    checkOverflow();
+    // Watch the bar itself resize (e.g. window resize shrinks the header)
+    const ro = new ResizeObserver(checkOverflow);
+    ro.observe(bar);
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(rafId);
+    };
+  }, [bookmarks, currentPage]);
+
+  // Close overflow dropdown when clicking outside or scrolling/resizing/Escape
+  useEffect(() => {
+    if (!showBookmarkOverflow) return;
+    const close = (e: MouseEvent) => {
+      // Don't close if click is inside the dropdown or on the chevron button itself
+      const inDropdown = overflowDropdownRef.current?.contains(e.target as Node);
+      const inBtn = overflowBtnRef.current?.contains(e.target as Node);
+      if (!inDropdown && !inBtn) {
+        setShowBookmarkOverflow(false);
+        window.electronAPI.bookmarks?.closeDropdown?.();
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowBookmarkOverflow(false);
+        window.electronAPI.bookmarks?.closeDropdown?.();
+      }
+    };
+    const dismiss = () => {
+      setShowBookmarkOverflow(false);
+      window.electronAPI.bookmarks?.closeDropdown?.();
+    };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('scroll', dismiss, true);
+    window.addEventListener('resize', dismiss);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('scroll', dismiss, true);
+      window.removeEventListener('resize', dismiss);
+    };
+  }, [showBookmarkOverflow]);
 
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
 
@@ -338,7 +416,7 @@ export const App = () => {
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', margin: 0, padding: 0, overflow: 'hidden' }}>
       {/* Sidebar */}
-      <div style={{ width: '200px', backgroundColor: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-color)', userSelect: 'none' }}>
+      <div style={{ width: '200px', flexShrink: 0, backgroundColor: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-color)', userSelect: 'none' }}>
         {/* Brand Header */}
         <div
           onClick={() => setCurrentPage('workspace')}
@@ -406,7 +484,7 @@ export const App = () => {
         <div style={{ borderTop: '1px solid var(--border-color)', padding: '6px 4px 10px' }}>
           <div
             className={`sidebar-footer-item ${currentPage === 'about' ? 'active' : ''}`}
-            onClick={() => setCurrentPage('about')}
+            onClick={() => { setShowBookmarkOverflow(false); setCurrentPage('about'); }}
             title="About Mosaic"
           >
             <span>ℹ️</span>
@@ -414,7 +492,7 @@ export const App = () => {
           </div>
           <div
             className={`sidebar-footer-item ${currentPage === 'privacy' ? 'active' : ''}`}
-            onClick={() => setCurrentPage('privacy')}
+            onClick={() => { setShowBookmarkOverflow(false); setCurrentPage('privacy'); }}
             title="Privacy Policy"
           >
             <span>🛡️</span>
@@ -435,9 +513,9 @@ export const App = () => {
           onNavigateAbout={() => setCurrentPage('about')}
         />
       ) : (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', backgroundColor: 'var(--bg-primary)' }}>
-          {/* Header */}
-          <div style={{ padding: '5px 5px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', position: 'relative', backgroundColor: 'var(--bg-primary)', overflow: 'hidden' }}>
+          {/* Header — overflow:hidden + minWidth:0 prevent the row from growing past the window width */}
+          <div style={{ width: '100%', boxSizing: 'border-box', padding: '5px 5px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10, overflow: 'hidden', minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexShrink: 0 }}>
               <div style={{ fontSize: '1.3em', fontWeight: 'bold' }}>{activeWorkspace.name}</div>
               <select
@@ -454,26 +532,59 @@ export const App = () => {
               </select>
             </div>
 
-            {/* Bookmarks Bar between grid select options and Add Site button */}
-            <div className="header-bookmarks-bar">
-              {bookmarks.map((b) => (
-                <div
-                  key={b.id}
-                  className="bookmark-chip"
-                  onClick={() => addSite(b.url)}
-                  title={`${b.title}\n${b.url} (Click to open in new panel)`}
-                >
-                  <span className="bookmark-icon">★</span>
-                  <span className="bookmark-title">{b.title}</span>
-                  <span
-                    className="bookmark-delete"
-                    onClick={(e) => deleteBookmark(b.id, e)}
-                    title="Remove Bookmark"
+            {/* Bookmarks section: chips and chevron button */}
+            <div className="header-bookmarks-section">
+              <div className="header-bookmarks-bar" ref={bookmarksBarRef}>
+                {bookmarks.map((b) => (
+                  <div
+                    key={b.id}
+                    className="bookmark-chip"
+                    onClick={() => { addSite(b.url); setShowBookmarkOverflow(false); }}
+                    title={`${b.title}\n${b.url} (Click to open in new panel)`}
                   >
-                    ✕
-                  </span>
-                </div>
-              ))}
+                    <span className="bookmark-icon">★</span>
+                    <span className="bookmark-title">{b.title}</span>
+                    <span
+                      className="bookmark-delete"
+                      onClick={(e) => deleteBookmark(b.id, e)}
+                      title="Remove Bookmark"
+                    >
+                      ✕
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {bookmarksOverflowing && (
+                <button
+                  ref={overflowBtnRef}
+                  className="bookmarks-overflow-btn"
+                  onClick={() => {
+                    if (Date.now() - lastClosedTimeRef.current < 200) {
+                      return;
+                    }
+                    if (showBookmarkOverflow) {
+                      setShowBookmarkOverflow(false);
+                      window.electronAPI.bookmarks?.closeDropdown?.();
+                    } else {
+                      const rect = overflowBtnRef.current!.getBoundingClientRect();
+                      setDropdownPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+                      setShowBookmarkOverflow(true);
+                      window.electronAPI.bookmarks?.showDropdown?.({
+                        x: Math.round(rect.right - 280),
+                        y: Math.round(rect.bottom + 6),
+                        width: 280,
+                        bookmarks,
+                      });
+                    }
+                  }}
+                  title="Show all bookmarks"
+                  aria-label="Show all bookmarks"
+                  aria-expanded={showBookmarkOverflow}
+                >
+                  ⌄
+                </button>
+              )}
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
@@ -486,6 +597,35 @@ export const App = () => {
               </button>
             </div>
           </div>
+
+          {/* Overflow dropdown - rendered in DOM only if native Electron overlay dropdown is not available */}
+          {showBookmarkOverflow && !hasNativeDropdown && dropdownPos && (
+            <div
+              ref={overflowDropdownRef}
+              className="bookmarks-overflow-dropdown"
+              style={{ top: dropdownPos.top, right: dropdownPos.right }}
+            >
+              {bookmarks.map((b) => (
+                <div
+                  key={b.id}
+                  className="bookmarks-overflow-item"
+                  onClick={() => { addSite(b.url); setShowBookmarkOverflow(false); }}
+                  title={b.url}
+                >
+                  <span className="bookmark-icon">★</span>
+                  <span className="bookmarks-overflow-item-title">{b.title}</span>
+                  <span
+                    className="bookmark-delete"
+                    onClick={(e) => { deleteBookmark(b.id, e); }}
+                    title="Remove Bookmark"
+                  >
+                    ✕
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
 
 
           {/* Panel Container */}

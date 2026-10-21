@@ -70,6 +70,10 @@ button:disabled {
   -webkit-user-select: none;
 }
 
+.panel-container:focus-within {
+  border-color: var(--border-focus);
+}
+
 .panel-header {
   padding: 4px 8px;
   background-color: var(--bg-tertiary);
@@ -224,34 +228,23 @@ button:disabled {
 }
 
 /* Header Bookmarks Bar */
+.header-bookmarks-section {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  margin: 0 16px;
+  gap: 4px;
+}
+
 .header-bookmarks-bar {
   display: flex;
   align-items: center;
   gap: 8px;
-  overflow-x: auto;
-  overflow-y: hidden;
   flex: 1;
-  margin: 0 16px;
+  min-width: 0;
+  overflow: hidden;
   padding: 2px 4px;
-  scrollbar-width: thin;
-  scrollbar-color: #555555 transparent;
-}
-
-.header-bookmarks-bar::-webkit-scrollbar {
-  height: 4px;
-}
-
-.header-bookmarks-bar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.header-bookmarks-bar::-webkit-scrollbar-thumb {
-  background: #555555;
-  border-radius: 2px;
-}
-
-.header-bookmarks-bar::-webkit-scrollbar-thumb:hover {
-  background: var(--accent);
 }
 
 .bookmark-chip {
@@ -306,6 +299,73 @@ button:disabled {
 .bookmark-chip .bookmark-delete:hover {
   background-color: rgba(241, 76, 76, 0.2);
   color: var(--danger);
+}
+
+/* Bookmarks Overflow Chevron */
+.bookmarks-overflow-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.bookmarks-overflow-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-focus);
+  color: var(--text-active);
+}
+
+.bookmarks-overflow-dropdown {
+  position: fixed;
+  min-width: 200px;
+  max-width: 280px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 10000;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.bookmarks-overflow-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-primary);
+  transition: background 0.1s;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.bookmarks-overflow-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-active);
+}
+
+.bookmarks-overflow-item-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---------------- Info Pages (About & Privacy) Styles ---------------- */
