@@ -46,11 +46,8 @@
       "icon": "build/icon.ico",
       "target": [
         {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
+        "target": "nsis",
+        "arch": ["x64"]
         }
       ]
     },
@@ -61,8 +58,8 @@
       "icon": "build/icon.png",
       "syncDesktopName": true,
       "target": [
-        "AppImage",
-        "tar.gz"
+         "AppImage",
+         "tar.gz"
       ],
       "category": "Network;WebBrowser;"
     }
